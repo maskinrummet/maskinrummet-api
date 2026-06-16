@@ -20,6 +20,7 @@ class Dataset(db.Model):
     name = db.Column(db.String(50))
     password = db.Column(db.String(4096))
     is_open = db.Column(db.Boolean, default=False)
+    is_example = db.Column(db.Boolean, default=False)
     use_value = db.Column(db.Boolean, default=False)
     value_name = db.Column(db.String(50), default=None)
 
@@ -33,7 +34,7 @@ class Sentence(db.Model):
 @app.route("/datasets", methods=["GET"])
 def get_datasets():
     datasets = Dataset.query.all()
-    dataset_names = [{"id": dataset.id, "name": dataset.name, "is_open": dataset.is_open} for dataset in datasets]
+    dataset_names = [{"id": dataset.id, "name": dataset.name, "is_open": dataset.is_open, "is_example": dataset.is_example} for dataset in datasets]
     return jsonify(dataset_names)
 
 @app.route("/datasets/<int:id>", methods=["GET"])
@@ -42,7 +43,7 @@ def get_dataset(id):
     if dataset:
         sentences = Sentence.query.filter_by(dataset_id=id).all()
         sentences_serialised = [{"id": s.id, "text": s.text, "value": s.value} for s in sentences]
-        return jsonify({"id": dataset.id, "name": dataset.name, "is_open": dataset.is_open, "use_value": dataset.use_value, "value_name": dataset.value_name, "sentences": sentences_serialised})
+        return jsonify({"id": dataset.id, "name": dataset.name, "is_open": dataset.is_open, "is_example": dataset.is_example, "use_value": dataset.use_value, "value_name": dataset.value_name, "sentences": sentences_serialised})
     else:
         return jsonify({"error": "Dataset not found"}), 404
 
@@ -98,7 +99,7 @@ def add_dataset():
                 return jsonify({"error": "Sentence(s) too long"}), 400
         if not str(s["value"]).removeprefix('-').isdigit():
                 return jsonify({"error": "Invalid value(s)"}), 400
-    new_dataset = Dataset(name=name, password=bcrypt.generate_password_hash(password=password).decode('utf-8'), is_open=True if is_open else False, use_value=True if use_value else False)
+    new_dataset = Dataset(name=name, password=bcrypt.generate_password_hash(password=password).decode('utf-8'), is_open=True if is_open else False, use_value=True if use_value else False, is_example=False)
     db.session.add(new_dataset)
     db.session.flush() 
     db.session.add_all([Sentence(text = s["text"], value = int(s["value"]) if s["value"] else 0, dataset_id = new_dataset.id) for s in sentences])
